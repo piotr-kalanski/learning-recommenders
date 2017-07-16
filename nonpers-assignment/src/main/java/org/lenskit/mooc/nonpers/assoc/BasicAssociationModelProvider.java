@@ -70,7 +70,12 @@ public class BasicAssociationModelProvider implements Provider<AssociationModel>
                 long yId = yEntry.getLongKey();
                 LongSortedSet yUsers = yEntry.getValue();
 
-                // TODO Compute P(Y & X) / P(X) and store in itemScores
+                // Compute P(Y & X) / P(X) and store in itemScores
+                double xy = 0.0;
+                for(long xUser: xUsers)
+                    if(yUsers.contains(xUser))
+                        xy += 1.0;
+                itemScores.put(yId, xy / xUsers.size());
             }
 
             // save the score map to the main map

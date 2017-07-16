@@ -12,9 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * An item scorer that scores each item with its mean rating.
@@ -85,7 +83,23 @@ public class MeanItemBasedItemRecommender extends AbstractItemBasedItemRecommend
     private ResultList recommendItems(int n, LongSet items) {
         List<Result> results = new ArrayList<>();
 
-        // TODO Find the top N items by mean rating
+        // Find the top N items by mean rating
+        for(long item: items){
+            if(model.hasItem(item)) {
+                results.add(Results.create(item, model.getMeanRating(item)));
+            }
+        }
+
+        Collections.sort(results, new Comparator<Result>() {
+            @Override
+            public int compare(Result o1, Result o2) {
+                if(o2.getScore() > o1.getScore()) return 1;
+                else if(o2.getScore() < o1.getScore()) return -1;
+                return 0;
+            }
+        });
+
+        if(n > 0) results = results.subList(0, n);
 
         return Results.newResultList(results);
     }
