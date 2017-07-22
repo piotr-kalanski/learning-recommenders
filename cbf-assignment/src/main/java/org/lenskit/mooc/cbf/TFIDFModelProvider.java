@@ -11,7 +11,9 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Builder for computing {@linkplain TFIDFModel TF-IDF models} from item tag data.  Each item is
@@ -58,13 +60,24 @@ public class TFIDFModelProvider implements Provider<TFIDFModel> {
         for (long item : items) {
             // Create a work vector to accumulate this item's tag vector.
             Map<String, Double> work = new HashMap<>();
-
+            Set<String> addedTags = new HashSet<>();
             for (Entity tagApplication : dao.query(TagData.ITEM_TAG_TYPE)
                                             .withAttribute(TagData.ITEM_ID, item)
                                             .get()) {
                 String tag = tagApplication.get(TagData.TAG);
-                // TODO Count this tag application in the term frequency vector
-                // TODO Also count it in the document frequencey vector when needed
+                // Count this tag application in the term frequency vector
+                if(work.containsKey(tag))
+                    work.put(tag, work.get(tag) + 1.0);
+                else
+                    work.put(tag, 1.0);
+                // Also count it in the document frequencey vector when needed
+                if(!addedTags.contains(tag)) {
+                    addedTags.add(tag);
+                    if (docFreq.containsKey(tag))
+                        docFreq.put(tag, docFreq.get(tag) + 1.0);
+                    else
+                        docFreq.put(tag, 1.0);
+                }
             }
 
             itemVectors.put(item, work);
@@ -86,12 +99,21 @@ public class TFIDFModelProvider implements Provider<TFIDFModel> {
         Map<Long, Map<String, Double>> modelData = new HashMap<>();
         for (Map.Entry<Long, Map<String, Double>> entry : itemVectors.entrySet()) {
             Map<String, Double> tv = new HashMap<>(entry.getValue());
-
-            // TODO Convert this vector to a TF-IDF vector
-            // TODO Normalize the TF-IDF vector to be a unit vector
+            // Convert this vector to a TF-IDF vector
+            for (Map.Entry<String, Double> e : tv.entrySet()) {
+                e.setValue(e.getValue() * docFreq.get(e.getKey()));
+            }
+            // Normalize the TF-IDF vector to be a unit vector
             // Normalize it by dividing each element by its Euclidean norm, which is the
             // square root of the sum of the squares of the values.
-
+            double sumSquares = 0.0;
+            for(Map.Entry<String, Double> e : tv.entrySet()) {
+                sumSquares += e.getValue()*e.getValue();
+            }
+            double norm = Math.sqrt(sumSquares);
+            for (Map.Entry<String, Double> e : tv.entrySet()) {
+                e.setValue(e.getValue() / norm);
+            }
             modelData.put(entry.getKey(), tv);
         }
 
