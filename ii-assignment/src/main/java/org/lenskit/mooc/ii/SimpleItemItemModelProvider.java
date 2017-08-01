@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -71,9 +72,44 @@ public class SimpleItemItemModelProvider implements Provider<SimpleItemItemModel
         // Map items to vectors (maps) of item similarities.
         Map<Long,Long2DoubleMap> itemSimilarities = Maps.newHashMap();
 
-        // TODO Compute the similarities between each pair of items
-        // Ignore nonpositive similarities
+        // Compute the similarities between each pair of items
+        for(Map.Entry<Long, Long2DoubleMap> i1 : itemVectors.entrySet()) {
+            Long2DoubleMap similarities = new Long2DoubleOpenHashMap();
+            for(Map.Entry<Long, Long2DoubleMap> i2 : itemVectors.entrySet()) {
+                Double similarity = calculateCosineSimilarity(i1.getValue(), i2.getValue());
+                if(similarity > 0) {
+                    similarities.put(i2.getKey(), similarity);
+                }
+            }
+            itemSimilarities.put(i1.getKey(), similarities);
+        }
 
         return new SimpleItemItemModel(LongUtils.frozenMap(itemMeans), itemSimilarities);
+    }
+
+    private Double calculateCosineSimilarity(Long2DoubleMap ratings1, Long2DoubleMap ratings2) {
+        double v1v2 = 0.0;
+        double v1v1 = 0.0;
+        double v2v2 = 0.0;
+
+        HashSet<Long> commonItems = new HashSet<>();
+        commonItems.addAll(ratings1.keySet());
+        commonItems.addAll(ratings2.keySet());
+
+        for(long item: commonItems) {
+            double u1 = 0.0;
+            double u2 = 0.0;
+            if(ratings1.containsKey(item)) {
+                u1 = ratings1.get(item);
+            }
+            if(ratings2.containsKey(item)) {
+                u2 = ratings2.get(item);
+            }
+            v1v2 += u1*u2;
+            v1v1 += u1*u1;
+            v2v2 += u2*u2;
+        }
+
+        return v1v2 / Math.sqrt(v1v1) / Math.sqrt(v2v2);
     }
 }

@@ -1,5 +1,6 @@
 package org.lenskit.mooc.ii;
 
+import it.unimi.dsi.fastutil.longs.Long2DoubleMap;
 import org.lenskit.api.Result;
 import org.lenskit.api.ResultMap;
 import org.lenskit.basic.AbstractItemBasedItemScorer;
@@ -35,7 +36,17 @@ public class SimpleItemBasedItemScorer extends AbstractItemBasedItemScorer {
     public ResultMap scoreRelatedItemsWithDetails(@Nonnull Collection<Long> basket, Collection<Long> items) {
         List<Result> results = new ArrayList<>();
 
-        // TODO Score the items and put them in results
+        // Score the items and put them in results
+        for (long item: items) {
+            Long2DoubleMap itemNeighbors = model.getNeighbors(item);
+            double score = 0.0;
+            for(long otherItem: basket) {
+                if(itemNeighbors.containsKey(otherItem)) {
+                    score += itemNeighbors.get(otherItem);
+                }
+            }
+            results.add(Results.create(item, score));
+        }
 
         return Results.newResultMap(results);
     }
