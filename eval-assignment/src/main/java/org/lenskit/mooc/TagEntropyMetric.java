@@ -49,11 +49,42 @@ public class TagEntropyMetric extends TopNMetric<TagEntropyMetric.Context> {
         DataAccessObject dao = context.getDAO();
         double entropy = 0;
 
-        // TODO Compute the entropy of the movie list
+        // Compute the entropy of the movie list
         // You can get a movie's tags with:
         // dao.query(TagData.ITEM_TAG_TYPE).withAttribute(TagData.ITEM_ID, res.getId()).get();
         // Each entity's tag can be retrieved with 'itemTag.get(TagData.TAG)'
+        Map<String, Double> tagProbabilities = new HashMap<>();
+        for(Result res : recommendations) {
+            Map<String, Integer> movieTagCounts = new HashMap<>();
+            List<Entity> tags = dao.query(TagData.ITEM_TAG_TYPE).withAttribute(TagData.ITEM_ID, res.getId()).get();
+            int totalTags = 0;
+            for(Entity itemTag: tags) {
+                String tag = itemTag.get(TagData.TAG);
+                totalTags++;
+                if(movieTagCounts.containsKey(tag)) {
+                    movieTagCounts.put(tag, movieTagCounts.get(tag) + 1);
+                }
+                else {
+                    movieTagCounts.put(tag, 1);
+                }
+            }
+            for(Map.Entry<String, Integer> tagCount: movieTagCounts.entrySet()) {
+                double value = 1.0 * tagCount.getValue() / totalTags / n;
 
+                if(tagProbabilities.containsKey(tagCount.getKey())) {
+                    tagProbabilities.put(tagCount.getKey(), tagProbabilities.get(tagCount.getKey()) + value);
+                }
+                else {
+                    tagProbabilities.put(tagCount.getKey(), value);
+                }
+            }
+        }
+
+        for(double probability : tagProbabilities.values()) {
+            entropy += -1.0 * probability * Math.log10(probability) / Math.log10(2);
+        }
+
+        context.addUser(entropy);
         return new TagEntropyResult(entropy);
     }
 
