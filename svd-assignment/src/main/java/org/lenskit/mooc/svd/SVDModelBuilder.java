@@ -68,7 +68,12 @@ public class SVDModelBuilder implements Provider<SVDModel> {
         RealVector weights = new ArrayRealVector(svd.getSingularValues());
         if (featureCount > 0) {
             logger.info("truncating matrix to {} features", featureCount);
-            // TODO Use the getSubMatrix method to truncate the user and item matrices
+            // Use the getSubMatrix method to truncate the user and item matrices
+            userMatrix = userMatrix.getSubMatrix(0, userMatrix.getRowDimension()-1, 0, featureCount-1);
+            itemMatrix = itemMatrix.getSubMatrix(0, itemMatrix.getRowDimension()-1, 0, featureCount-1);
+            //userMatrix = userMatrix.getSubMatrix(0, featureCount-1, 0, userMatrix.getColumnDimension()-1);
+            //itemMatrix = itemMatrix.getSubMatrix(0, featureCount-1, 0, itemMatrix.getColumnDimension()-1);
+            weights = weights.getSubVector(0, featureCount);
         }
 
         return new SVDModel(userIndex, itemIndex,
@@ -95,7 +100,11 @@ public class SVDModelBuilder implements Provider<SVDModel> {
         // populate it with data
         try (ObjectStream<Rating> ratings = dao.query(Rating.class)
                                                .stream()) {
-            // TODO Put this user's ratings into the matrix
+            // Put this user's ratings into the matrix
+            for(Rating r: ratings) {
+                double value = r.getValue() - baseline.getIntercept() - baseline.getUserBias(r.getUserId()) - baseline.getItemBias(r.getItemId());
+                matrix.setEntry(userIndex.getIndex(r.getUserId()), itemIndex.getIndex(r.getItemId()), value);
+            }
         }
 
         return matrix;
