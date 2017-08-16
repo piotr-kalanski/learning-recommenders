@@ -38,7 +38,24 @@ public class LogisticItemScorer extends AbstractItemScorer {
     @Nonnull
     @Override
     public ResultMap scoreWithDetails(long user, @Nonnull Collection<Long> items) {
-        // TODO Implement item scorer
-        throw new UnsupportedOperationException("item scorer not implemented");
+        // Implement item scorer
+        System.gc();
+        List<Result> results = new ArrayList<>();
+        List<ItemScorer> scorers = recommenders.getItemScorers();
+        double[] scores = new double[recommenders.getRecommenderCount()+2];
+        double biasInterceptAndUser = biasModel.getIntercept() + biasModel.getUserBias(user);
+        for(Long item: items) {
+            double bias = biasInterceptAndUser + biasModel.getItemBias(item);
+            scores[0] = bias;
+            scores[1] = Math.log10(ratingSummary.getItemRatingCount(item));
+            int i = 0;
+            for(ItemScorer is: scorers) {
+                Result score = is.score(user, item);
+                scores[i+2] = score == null ? 0.0 : score.getScore() - bias;
+                i++;
+            }
+            results.add(Results.create(item, logisticModel.evaluate(1.0, scores)));
+        }
+        return Results.newResultMap(results);
     }
 }
